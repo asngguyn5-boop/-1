@@ -1,0 +1,8 @@
+{
+  "name": "AI천안뉴스 • 기획사",
+  "description": "워싱턴 포스트 스타일의 고품격 디지털 뉴스 미디어 및 종합 기획사 통합 플랫폼",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

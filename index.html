@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html lang="ko" style="background-color: #000000;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI천안뉴스 • 종합기획사</title>
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Song+Myung&family=Montserrat:wght@900&family=East+Sea+Dokdo&display=swap" rel="stylesheet">
+    <script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.39/build/spline-viewer.js"></script>
+    <style>
+        /* 초기 로딩 시 깜빡임 방지 */
+        html, body {
+            background-color: #000000 !important;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        #root {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #root.loaded {
+            opacity: 1;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            color: #E5E7EB;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+            word-break: keep-all;
+        }
+        .wp-serif { font-family: 'Playfair Display', serif; }
+        .brand-serif { font-family: 'Song Myung', serif; }
+        .brand-brush { font-family: 'East Sea Dokdo', cursive; }
+        .brand-ai { font-family: 'Montserrat', sans-serif; letter-spacing: -0.05em; }
+        h1, h2, h3 { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; overflow-wrap: break-word; }
+        .ai-glow { text-shadow: 0 0 20px rgba(0, 78, 162, 0.8), 0 0 40px rgba(0, 78, 162, 0.4); }
+        .text-shadow-hero { text-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+        spline-viewer { background: transparent !important; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+        @media (max-width: 768px) { .mobile-touch-area { min-height: 44px; min-width: 44px; } }
+        .text-keep-all { word-break: keep-all; overflow-wrap: break-word; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react-dom/": "https://esm.sh/react-dom@^18.2.0/",
+    "react/": "https://esm.sh/react@^18.2.0/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.38.0"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+        // DOM 로드 시 root 페이드 인 처리
+        window.addEventListener('DOMContentLoaded', () => {
+            const root = document.getElementById('root');
+            if (root) root.classList.add('loaded');
+        });
+    </script>
+</body>
+</html>
