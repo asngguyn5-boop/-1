@@ -128,13 +128,18 @@ const App: React.FC = () => {
       comments: 0,
       date: new Date().toISOString().split('T')[0]
     };
+    
+    // 로컬 상태 업데이트
     setPosts([newPost, ...posts]);
+    
+    // Formspree 실시간 데이터 전송
     try {
       await fetch(FORMSPREE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
-          _subject: `[커뮤니티 새 게시글/제보] ${newPost.category}: ${newPost.title}`,
+          _subject: `[커뮤니티 새 활동] ${newPost.category}: ${newPost.title}`,
+          type: 'COMMUNITY_POST',
           category: newPost.category,
           title: newPost.title,
           author: newPost.author,
@@ -142,7 +147,9 @@ const App: React.FC = () => {
           submittedAt: new Date().toLocaleString()
         })
       });
-    } catch (e) { console.error('Formspree notify failed', e); }
+    } catch (e) { 
+      console.error('Formspree notify failed', e); 
+    }
   };
 
   return (

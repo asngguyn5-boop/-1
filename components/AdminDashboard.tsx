@@ -42,7 +42,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
   const [activeTab, setActiveTab] = useState<AdminTab>(props.initialTab || 'news');
   const [editingItem, setEditingItem] = useState<{ type: string, data: any } | null>(null);
   const [localDesign, setLocalDesign] = useState<SiteSettings>(props.siteSettings);
-  const [designSubTab, setDesignSubTab] = useState<'visual' | 'typography' | 'branding'>('visual');
+  const [designSubTab, setDesignSubTab] = useState<'visual' | 'typography' | 'branding' | 'footer'>('branding');
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [isBatchGenerating, setIsBatchGenerating] = useState(false);
 
@@ -52,7 +52,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
 
   useEffect(() => {
     if (props.initialArticle) { setEditingItem({ type: 'news', data: props.initialArticle }); setActiveTab('news'); }
-    if (props.initialPost) { setEditingItem({ type: 'post', data: props.initialPost }); setActiveTab('community'); }
+    if (props.initialPost) { setEditingItem({ type: 'community', data: props.initialPost }); setActiveTab('community'); }
   }, [props.initialArticle, props.initialPost]);
 
   const handleSave = (type: string, data: any) => {
@@ -60,8 +60,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
     else if (type === 'news') {
       if (data.id) props.onUpdateNews(props.articles.map(a => a.id === data.id ? data : a));
       else props.onUpdateNews([{ ...data, id: 'n'+Date.now(), date: new Date().toISOString().split('T')[0] }, ...props.articles]);
-    } else if (type === 'post') {
-      props.onUpdatePosts(props.posts.map(p => p.id === data.id ? data : p));
+    } else if (type === 'community') {
+      if (data.id) props.onUpdatePosts(props.posts.map(p => p.id === data.id ? data : p));
+      else props.onUpdatePosts([{ ...data, id: 'p'+Date.now(), date: new Date().toISOString().split('T')[0], views: 0, comments: 0 }, ...props.posts]);
     } else if (type === 'affiliate') {
       if (data.id) props.onUpdateAffiliates(props.affiliates.map(p => p.id === data.id ? data : p));
       else props.onUpdateAffiliates([...props.affiliates, { ...data, id: 'ap'+Date.now() }]);
@@ -128,36 +129,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
     }
   };
 
-  const handleBatchAiGenerate = async () => {
-    const emptyArticles = props.articles.filter(a => !a.imageUrl || a.imageUrl.includes('placeholder') || a.imageUrl === '');
-    if (emptyArticles.length === 0) {
-      alert('이미지가 비어 있는 기사가 없습니다.');
-      return;
-    }
-    if (!window.confirm(`${emptyArticles.length}개의 기사에 대해 AI 이미지를 생성하시겠습니까? (시간이 소요될 수 있습니다)`)) return;
-    
-    setIsBatchGenerating(true);
-    const updatedArticles = [...props.articles];
-    
-    try {
-      for (let i = 0; i < updatedArticles.length; i++) {
-        const a = updatedArticles[i];
-        if (!a.imageUrl || a.imageUrl.includes('placeholder') || a.imageUrl === '') {
-          const url = await generateSingleImage(a.title, a.summary, 'news');
-          if (url) updatedArticles[i] = { ...a, imageUrl: url };
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      }
-      props.onUpdateNews(updatedArticles);
-      alert('비어 있는 모든 이미지의 AI 생성이 완료되었습니다.');
-    } catch (e) {
-      console.error(e);
-      alert('일괄 생성 중 일부 오류가 발생했습니다.');
-    } finally {
-      setIsBatchGenerating(false);
-    }
-  };
-
   const ColorInput = ({ label, value, onChange }: any) => (
     <div className="flex flex-col gap-2 p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
       <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{label}</label>
@@ -185,6 +156,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
     </div>
   );
 
+  // 커리어 리스트 편집 핸들러
+  const handleCareerChange = (idx: number, field: 'label' | 'type', value: string) => {
+    const newCareers = [...props.profile.careers];
+    newCareers[idx] = { ...newCareers[idx], [field]: value };
+    props.onUpdateProfile({ ...props.profile, careers: newCareers });
+  };
+  const addCareer = () => {
+    props.onUpdateProfile({ ...props.profile, careers: [...props.profile.careers, { label: '', type: 'social' }] });
+  };
+  const removeCareer = (idx: number) => {
+    props.onUpdateProfile({ ...props.profile, careers: props.profile.careers.filter((_:any, i:number) => i !== idx) });
+  };
+
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 animate-fadeIn">
       {/* 어드민 헤더 */}
@@ -194,37 +178,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.4em] mt-2">Fine-Grained Content & Design Management</p>
         </div>
         <div className="flex gap-4">
-          <button 
-            onClick={handleBatchAiGenerate} 
-            disabled={isBatchGenerating}
-            className="bg-primary/20 text-primary border border-primary/30 px-6 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-primary hover:text-white transition-all disabled:opacity-50"
-          >
-            {isBatchGenerating ? <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div> : 'AI 이미지 일괄 생성'}
-          </button>
           <button onClick={props.onBack} className="bg-white text-black px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all shadow-xl">Exit Admin</button>
         </div>
       </div>
 
-      {/* 탭 네비게이션 */}
-      <div className="flex gap-2 mb-10 overflow-x-auto no-scrollbar pb-2">
-        {['design', 'news', 'shop', 'agency', 'community', 'profile', 'ads'].map((tab) => (
+      {/* 첨부 이미지 스타일의 탭 네비게이션 */}
+      <div className="flex gap-2 mb-10 overflow-x-auto no-scrollbar pb-4">
+        {[
+          { id: 'design', label: 'DESIGN' },
+          { id: 'news', label: 'NEWS' },
+          { id: 'shop', label: 'SHOP' },
+          { id: 'agency', label: 'AGENCY' },
+          { id: 'community', label: 'COMMUNITY' },
+          { id: 'profile', label: 'PROFILE' },
+          { id: 'ads', label: 'ADS' }
+        ].map((tab) => (
           <button 
-            key={tab} 
-            onClick={() => setActiveTab(tab as any)} 
-            className={`px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'bg-zinc-900 text-zinc-600 hover:text-zinc-400'}`}
+            key={tab.id} 
+            onClick={() => setActiveTab(tab.id as any)} 
+            className={`px-8 py-5 rounded-[1.25rem] text-sm font-black uppercase tracking-widest transition-all whitespace-nowrap shadow-lg ${activeTab === tab.id ? 'bg-[#004EA2] text-white' : 'bg-zinc-900 text-zinc-600 hover:text-zinc-400 border border-white/5'}`}
           >
-            {tab}
+            {tab.label}
           </button>
         ))}
       </div>
 
       <div className="bg-zinc-950 border border-zinc-900 p-8 md:p-12 rounded-[4rem] min-h-[600px] shadow-2xl">
         
+        {/* DESIGN 관리 */}
         {activeTab === 'design' && (
           <div className="space-y-10 animate-fadeIn">
             <div className="flex gap-4 border-b border-zinc-900 pb-6 mb-8 overflow-x-auto no-scrollbar">
               {[
                 {id: 'branding', label: '브랜딩 & 레이아웃'},
+                {id: 'footer', label: '푸터 및 상세 정보'},
                 {id: 'typography', label: '타이포그래피'},
                 {id: 'visual', label: '컬러 & 비주얼'}
               ].map(st => (
@@ -269,15 +256,37 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
               </div>
             )}
 
+            {designSubTab === 'footer' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <TextInput label="발행기관(회사명)" value={localDesign.companyName} onChange={(v:string)=>setLocalDesign({...localDesign, companyName:v})} />
+                </div>
+                <div className="md:col-span-2">
+                  <TextInput label="본사 주소" value={localDesign.address} onChange={(v:string)=>setLocalDesign({...localDesign, address:v})} />
+                </div>
+                <TextInput label="대표 이메일" value={localDesign.email} onChange={(v:string)=>setLocalDesign({...localDesign, email:v})} />
+                <TextInput label="대표 전화" value={localDesign.phone} onChange={(v:string)=>setLocalDesign({...localDesign, phone:v})} />
+                <TextInput label="등록번호" value={localDesign.registrationNum} onChange={(v:string)=>setLocalDesign({...localDesign, registrationNum:v})} />
+                <TextInput label="등록 일자" value={localDesign.registrationDate} onChange={(v:string)=>setLocalDesign({...localDesign, registrationDate:v})} />
+                <TextInput label="발행인" value={localDesign.publisher} onChange={(v:string)=>setLocalDesign({...localDesign, publisher:v})} />
+                <TextInput label="편집인" value={localDesign.editor} onChange={(v:string)=>setLocalDesign({...localDesign, editor:v})} />
+                <TextInput label="청소년보호책임자" value={localDesign.youthProtectionOfficer} onChange={(v:string)=>setLocalDesign({...localDesign, youthProtectionOfficer:v})} />
+                <div className="md:col-span-2 space-y-4 p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">푸터 상세 설명</label>
+                  <textarea 
+                    value={localDesign.footerDescription} 
+                    onChange={e => setLocalDesign({...localDesign, footerDescription: e.target.value})}
+                    className="w-full bg-black/50 border border-zinc-800 rounded-xl p-6 text-sm text-zinc-300 h-32 resize-none focus:border-primary outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
             {designSubTab === 'typography' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SliderInput label="메인 헤드라인 크기" min={30} max={120} value={localDesign.heroTitleSize} onChange={(v:number)=>setLocalDesign({...localDesign, heroTitleSize:v})} />
                 <SliderInput label="뉴스 그리드 제목 크기" min={16} max={40} value={localDesign.gridTitleSize} onChange={(v:number)=>setLocalDesign({...localDesign, gridTitleSize:v})} />
                 <SliderInput label="본문 폰트 크기" min={12} max={24} value={localDesign.bodyTextSize} onChange={(v:number)=>setLocalDesign({...localDesign, bodyTextSize:v})} />
-                <SliderInput label="본문 행간 (Line Height)" min={1} max={2} step={0.1} value={localDesign.bodyLineHeight} onChange={(v:number)=>setLocalDesign({...localDesign, bodyLineHeight:v})} suffix="" />
-                <SliderInput label="본문 자간 (Letter Spacing)" min={-0.2} max={0.2} step={0.01} value={localDesign.bodyLetterSpacing} onChange={(v:number)=>setLocalDesign({...localDesign, bodyLetterSpacing:v})} suffix="em" />
-                <SliderInput label="사이드바 타이틀 크기" min={10} max={24} value={localDesign.sidebarTitleSize} onChange={(v:number)=>setLocalDesign({...localDesign, sidebarTitleSize:v})} />
-                <SliderInput label="게시판 타이틀 크기" min={18} max={48} value={localDesign.boardTitleSize} onChange={(v:number)=>setLocalDesign({...localDesign, boardTitleSize:v})} />
               </div>
             )}
 
@@ -286,27 +295,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                 <ColorInput label="브랜드 기본색 (Primary)" value={localDesign.primaryColor} onChange={(v:string)=>setLocalDesign({...localDesign, primaryColor:v})} />
                 <ColorInput label="배경 색상 (Background)" value={localDesign.bgColor} onChange={(v:string)=>setLocalDesign({...localDesign, bgColor:v})} />
                 <ColorInput label="카드 배경색 (Card Bg)" value={localDesign.cardBgColor} onChange={(v:string)=>setLocalDesign({...localDesign, cardBgColor:v})} />
-                <ColorInput label="본문 텍스트 색상" value={localDesign.bodyTextColor} onChange={(v:string)=>setLocalDesign({...localDesign, bodyTextColor:v})} />
-                <ColorInput label="헤드라인 제목 색상" value={localDesign.heroTitleColor} onChange={(v:string)=>setLocalDesign({...localDesign, heroTitleColor:v})} />
-                <SliderInput label="전역 곡률 (Border Radius)" min={0} max={50} value={localDesign.globalBorderRadius} onChange={(v:number)=>setLocalDesign({...localDesign, globalBorderRadius:v})} />
               </div>
             )}
 
             <div className="pt-10 flex gap-4">
-              <button onClick={() => handleSave('design', localDesign)} className="flex-grow bg-primary py-6 rounded-3xl text-white font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:brightness-110 transition-all">설정 사항 즉시 적용</button>
+              <button onClick={() => handleSave('design', localDesign)} className="flex-grow bg-[#004EA2] py-6 rounded-3xl text-white font-black uppercase text-xs tracking-[0.3em] shadow-2xl hover:brightness-110 transition-all">설정 사항 즉시 적용</button>
               <button onClick={() => setLocalDesign(props.siteSettings)} className="px-10 bg-zinc-900 py-6 rounded-3xl text-zinc-500 font-black uppercase text-xs tracking-widest hover:text-white transition-all">되돌리기</button>
             </div>
           </div>
         )}
 
-        {/* 기사 관리 탭 */}
+        {/* NEWS 관리 */}
         {activeTab === 'news' && (
           <div className="space-y-8 animate-fadeIn">
             <div className="flex justify-between items-center border-b border-zinc-900 pb-6 mb-6">
               <h3 className="text-2xl font-black text-white italic uppercase">Editorial Manager</h3>
               <button 
                 onClick={() => setEditingItem({ type: 'news', data: { title: '', summary: '', content: '', category: Category.LOCAL, imageUrl: '', mediaType: 'image', author: '김상균 기자', isHeadline: false } })} 
-                className="bg-primary text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg"
+                className="bg-[#004EA2] text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg"
               >
                 + New Article
               </button>
@@ -328,33 +334,156 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           </div>
         )}
 
-        {/* 프로필 관리 탭 */}
+        {/* SHOP 관리 */}
+        {activeTab === 'shop' && (
+          <div className="space-y-12 animate-fadeIn">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-2xl font-black text-white italic uppercase">Affiliate Services</h3>
+                <button onClick={() => setEditingItem({ type: 'affiliate', data: { name: '', description: '', price: '', imageUrl: '', tag: '추천', affiliateUrl: '#' } })} className="bg-[#004EA2] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Add New</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {props.affiliates.map(p => (
+                  <div key={p.id} className="flex justify-between items-center p-6 bg-zinc-900 border border-zinc-800 rounded-3xl">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <img src={p.imageUrl} className="w-12 h-12 rounded-lg object-cover" alt="" />
+                      <p className="text-white font-bold text-sm truncate">{p.name}</p>
+                    </div>
+                    <button onClick={() => setEditingItem({ type: 'affiliate', data: p })} className="text-primary text-[10px] font-black uppercase border border-primary/20 px-4 py-2 rounded-lg">Edit</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-6 pt-10">
+              <div className="flex justify-between items-center">
+                <h3 className="text-2xl font-black text-white italic uppercase">Store Goods</h3>
+                <button onClick={() => setEditingItem({ type: 'goods', data: { name: '', description: '', price: '', imageUrl: '', isNew: true } })} className="bg-[#004EA2] text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Add New</button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {props.goods.map(g => (
+                  <div key={g.id} className="flex justify-between items-center p-6 bg-zinc-900 border border-zinc-800 rounded-3xl">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <img src={g.imageUrl} className="w-12 h-12 rounded-lg object-cover" alt="" />
+                      <p className="text-white font-bold text-sm truncate">{g.name}</p>
+                    </div>
+                    <button onClick={() => setEditingItem({ type: 'goods', data: g })} className="text-primary text-[10px] font-black uppercase border border-primary/20 px-4 py-2 rounded-lg">Edit</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* AGENCY 관리 (Reception Services) */}
+        {activeTab === 'agency' && (
+          <div className="space-y-8 animate-fadeIn">
+            <h3 className="text-2xl font-black text-white italic uppercase mb-8">Reception Services Management</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {props.services.map(s => (
+                <div key={s.id} className="p-8 bg-zinc-900 border border-zinc-800 rounded-[2.5rem] flex items-center justify-between group hover:border-primary transition-all">
+                  <div className="flex items-center gap-6">
+                    <div className="w-14 h-14 bg-primary/20 rounded-2xl flex items-center justify-center text-primary">
+                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={s.icon} /></svg>
+                    </div>
+                    <div>
+                      <p className="text-white font-black text-lg">{s.title}</p>
+                      <p className="text-zinc-600 text-xs mt-1 line-clamp-1">{s.description}</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setEditingItem({ type: 'agency', data: s })} className="bg-zinc-800 text-zinc-400 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white">Edit Item</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* COMMUNITY 관리 (게시글 관리) */}
+        {activeTab === 'community' && (
+          <div className="space-y-8 animate-fadeIn">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-2xl font-black text-white italic uppercase">Community Activity Feed</h3>
+              <button 
+                onClick={() => setEditingItem({ type: 'community', data: { title: '', content: '', author: '', category: '자유게시판' } })} 
+                className="bg-[#004EA2] text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+              >
+                + Create Post
+              </button>
+            </div>
+            <div className="space-y-3">
+              {props.posts.map(p => (
+                <div key={p.id} className="flex items-center justify-between p-6 bg-zinc-900 border border-zinc-800 rounded-2xl group hover:border-primary transition-all">
+                  <div className="flex items-center gap-4">
+                    <span className="px-3 py-1 bg-zinc-800 text-zinc-500 text-[9px] font-black uppercase rounded-lg">{p.category}</span>
+                    <p className="text-zinc-200 font-bold text-sm truncate">{p.title}</p>
+                    <span className="text-zinc-700 text-[10px] font-black italic">by {p.author}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingItem({ type: 'community', data: p })} className="bg-zinc-800 text-zinc-500 hover:text-white px-5 py-2 rounded-lg text-[9px] font-black uppercase">Edit</button>
+                    <button onClick={() => props.onUpdatePosts(props.posts.filter(x => x.id !== p.id))} className="bg-red-900/20 text-red-500 hover:bg-red-600 hover:text-white px-5 py-2 rounded-lg text-[9px] font-black uppercase transition-all">Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* PROFILE 관리 */}
         {activeTab === 'profile' && (
           <div className="space-y-10 animate-fadeIn">
-            <h3 className="text-2xl font-black text-white italic uppercase mb-8">Representative Profile Edit</h3>
+            <h3 className="text-2xl font-black text-white italic uppercase mb-8">Representative Bio & Careers</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <TextInput label="이름" value={props.profile.name} onChange={(v:string)=>props.onUpdateProfile({...props.profile, name:v})} />
               <TextInput label="직함" value={props.profile.title} onChange={(v:string)=>props.onUpdateProfile({...props.profile, title:v})} />
               <div className="md:col-span-2">
                 <TextInput label="프로필 이미지 URL" value={props.profile.imageUrl} onChange={(v:string)=>props.onUpdateProfile({...props.profile, imageUrl:v})} />
               </div>
-              <div className="md:col-span-2">
-                <TextInput label="네이버 블로그 URL" value={props.profile.blogUrl} onChange={(v:string)=>props.onUpdateProfile({...props.profile, blogUrl:v})} />
-              </div>
               <div className="md:col-span-2 space-y-4 p-4 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">프로필 소개 문구</label>
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">대표 인사말</label>
                 <textarea 
                   value={props.profile.description} 
                   onChange={e => props.onUpdateProfile({...props.profile, description: e.target.value})}
                   className="w-full bg-black/50 border border-zinc-800 rounded-xl p-6 text-sm text-zinc-300 h-32 resize-none focus:border-primary outline-none"
                 />
               </div>
+
+              {/* 정밀 경력 수정 기능 */}
+              <div className="md:col-span-2 space-y-4 p-6 bg-zinc-900/30 rounded-[3rem] border border-zinc-800">
+                <div className="flex justify-between items-center mb-4">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-2">경력 사항 상세 편집</label>
+                  <button onClick={addCareer} className="bg-primary/20 text-primary px-4 py-1.5 rounded-full text-[9px] font-black uppercase border border-primary/20 hover:bg-primary hover:text-white transition-all">+ Add Item</button>
+                </div>
+                <div className="space-y-3">
+                  {props.profile.careers.map((career: any, idx: number) => (
+                    <div key={idx} className="flex gap-4 items-center animate-fadeIn">
+                      <input 
+                        className="flex-grow bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-primary outline-none"
+                        value={career.label}
+                        onChange={e => handleCareerChange(idx, 'label', e.target.value)}
+                        placeholder="기관 및 직책명"
+                      />
+                      <select 
+                        className="bg-black border border-zinc-800 rounded-xl px-4 py-3 text-[10px] font-black text-zinc-500 uppercase"
+                        value={career.type}
+                        onChange={e => handleCareerChange(idx, 'type', e.target.value)}
+                      >
+                        <option value="political">정치</option>
+                        <option value="social">사회봉사</option>
+                        <option value="media">미디어</option>
+                        <option value="local">지역사회</option>
+                      </select>
+                      <button onClick={() => removeCareer(idx)} className="p-3 text-red-900 hover:text-red-500 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <button onClick={() => handleSave('profile', props.profile)} className="w-full bg-primary py-6 rounded-3xl text-white font-black uppercase text-xs tracking-widest">Save Profile Changes</button>
+            <button onClick={() => handleSave('profile', props.profile)} className="w-full bg-[#004EA2] py-6 rounded-3xl text-white font-black uppercase text-xs tracking-widest shadow-2xl">Confirm Profile & Careers Updates</button>
           </div>
         )}
 
-        {/* 광고 관리 탭 */}
+        {/* ADS 관리 */}
         {activeTab === 'ads' && (
           <div className="space-y-10 animate-fadeIn">
             <h3 className="text-2xl font-black text-white italic uppercase mb-8">Advertisement Slot Management</h3>
@@ -367,13 +496,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
                   <TextInput label="광고 제목" value={ad.title} onChange={(v:string)=>{
                     const newAds = [...props.ads]; newAds[idx].title = v; props.onUpdateAds(newAds);
                   }} />
-                  <TextInput label="서브 텍스트 / 연락처" value={ad.subtitle} onChange={(v:string)=>{
-                    const newAds = [...props.ads]; newAds[idx].subtitle = v; props.onUpdateAds(newAds);
-                  }} />
                   <TextInput label="연결 링크 (tel: 또는 URL)" value={ad.link} onChange={(v:string)=>{
                     const newAds = [...props.ads]; newAds[idx].link = v; props.onUpdateAds(newAds);
                   }} />
-                  <TextInput label="미디어 URL (이미지/영상)" value={ad.mediaUrl} onChange={(v:string)=>{
+                  <TextInput label="미디어 URL" value={ad.mediaUrl} onChange={(v:string)=>{
                     const newAds = [...props.ads]; newAds[idx].mediaUrl = v; props.onUpdateAds(newAds);
                   }} />
                 </div>
@@ -382,109 +508,55 @@ const AdminDashboard: React.FC<AdminDashboardProps> = (props) => {
           </div>
         )}
 
-        {/* 쇼핑 관리 탭 (Affiliates & Goods) */}
-        {activeTab === 'shop' && (
-          <div className="space-y-12 animate-fadeIn">
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-white italic uppercase">Affiliate Services</h3>
-                <button onClick={() => setEditingItem({ type: 'affiliate', data: { name: '', description: '', content: '', price: '', imageUrl: '', tag: '추천', affiliateUrl: '#' } })} className="bg-primary text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Add New</button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {props.affiliates.map(p => (
-                  <div key={p.id} className="flex justify-between items-center p-6 bg-zinc-900 border border-zinc-800 rounded-3xl group">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <img src={p.imageUrl} className="w-12 h-12 rounded-lg object-cover shrink-0" alt="" />
-                      <div className="min-w-0"><p className="text-white font-bold text-sm truncate">{p.name}</p></div>
-                    </div>
-                    <button onClick={() => setEditingItem({ type: 'affiliate', data: p })} className="text-primary text-[10px] font-black uppercase border border-primary/20 px-4 py-2 rounded-lg hover:bg-primary hover:text-white transition-all">Edit</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-6 pt-10">
-              <div className="flex justify-between items-center">
-                <h3 className="text-2xl font-black text-white italic uppercase">Official Store Goods</h3>
-                <button onClick={() => setEditingItem({ type: 'goods', data: { name: '', description: '', price: '', imageUrl: '', isNew: true } })} className="bg-primary text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase">Add New</button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {props.goods.map(g => (
-                  <div key={g.id} className="flex justify-between items-center p-6 bg-zinc-900 border border-zinc-800 rounded-3xl group">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <img src={g.imageUrl} className="w-12 h-12 rounded-lg object-cover shrink-0" alt="" />
-                      <div className="min-w-0"><p className="text-white font-bold text-sm truncate">{g.name}</p></div>
-                    </div>
-                    <button onClick={() => setEditingItem({ type: 'goods', data: g })} className="text-primary text-[10px] font-black uppercase border border-primary/20 px-4 py-2 rounded-lg hover:bg-primary hover:text-white transition-all">Edit</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 편집 모달 (Common) */}
+        {/* 정밀 편집 모달 (Common) */}
         {editingItem && (
           <div className="fixed inset-0 z-[1000] bg-black/98 flex items-center justify-center p-6 backdrop-blur-3xl animate-fadeIn">
-            <div className="bg-zinc-950 border border-zinc-800 w-full max-w-4xl p-10 rounded-[4rem] space-y-8 overflow-y-auto max-h-[90vh] no-scrollbar">
+            <div className="bg-zinc-950 border border-zinc-800 w-full max-w-4xl p-10 rounded-[4rem] space-y-8 overflow-y-auto max-h-[90vh] no-scrollbar shadow-[0_0_100px_rgba(0,0,0,0.9)]">
               <div className="flex justify-between items-center">
-                <h3 className="text-3xl font-black text-white italic uppercase">Editing {editingItem.type}</h3>
-                <button onClick={() => setEditingItem(null)} className="text-zinc-600 hover:text-white"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                <h3 className="text-3xl font-black text-white italic uppercase">Fine-Grained Editing: {editingItem.type.toUpperCase()}</h3>
+                <button onClick={() => setEditingItem(null)} className="text-zinc-600 hover:text-white p-3 bg-zinc-900 rounded-full transition-all"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg></button>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {editingItem.type === 'news' && (
+                {/* News & Community 공통 필드 */}
+                {(editingItem.type === 'news' || editingItem.type === 'community') && (
                   <>
-                    <div className="md:col-span-2"><TextInput label="기사 제목" value={editingItem.data.title} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, title: v}})} /></div>
-                    <div className="md:col-span-2 relative">
-                      <TextInput label="이미지/미디어 URL" value={editingItem.data.imageUrl} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, imageUrl: v}})} />
-                      <button 
-                        onClick={handleGenerateAiImage}
-                        disabled={isAiGenerating}
-                        className="absolute right-6 bottom-3 bg-primary text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:brightness-110 disabled:opacity-50"
-                      >
-                        {isAiGenerating ? (
-                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        ) : (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        )}
-                        AI 이미지 생성
-                      </button>
-                    </div>
+                    <div className="md:col-span-2"><TextInput label="제목" value={editingItem.data.title} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, title: v}})} /></div>
                     <TextInput label="카테고리" value={editingItem.data.category} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, category: v}})} />
                     <TextInput label="작성자" value={editingItem.data.author} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, author: v}})} />
-                    <div className="md:col-span-2"><textarea value={editingItem.data.summary} onChange={e=>setEditingItem({...editingItem, data: {...editingItem.data, summary: e.target.value}})} className="w-full bg-black/50 border border-zinc-800 p-6 text-white rounded-2xl h-24 text-sm" placeholder="기사 요약문" /></div>
-                    <div className="md:col-span-2"><textarea value={editingItem.data.content} onChange={e=>setEditingItem({...editingItem, data: {...editingItem.data, content: e.target.value}})} className="w-full bg-black/50 border border-zinc-800 p-6 text-white rounded-2xl h-72 text-sm leading-relaxed" placeholder="기사 본문 내용" /></div>
+                    {editingItem.type === 'news' && (
+                      <div className="md:col-span-2 relative">
+                        <TextInput label="이미지 URL" value={editingItem.data.imageUrl} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, imageUrl: v}})} />
+                        <button onClick={handleGenerateAiImage} className="absolute right-6 bottom-3 bg-primary text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase flex items-center gap-2">AI 이미지</button>
+                      </div>
+                    )}
+                    <div className="md:col-span-2"><textarea value={editingItem.data.content} onChange={e=>setEditingItem({...editingItem, data: {...editingItem.data, content: e.target.value}})} className="w-full bg-black border border-zinc-800 p-8 text-white rounded-3xl h-72 text-lg leading-relaxed focus:border-primary outline-none" placeholder="본문 내용" /></div>
                   </>
                 )}
 
+                {/* Agency(Services) 필드 */}
+                {editingItem.type === 'agency' && (
+                  <>
+                    <div className="md:col-span-2"><TextInput label="서비스 타이틀" value={editingItem.data.title} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, title: v}})} /></div>
+                    <div className="md:col-span-2"><TextInput label="대표 이미지 URL" value={editingItem.data.imageUrl} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, imageUrl: v}})} /></div>
+                    <div className="md:col-span-2"><TextInput label="아이콘 데이터 (SVG d path)" value={editingItem.data.icon} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, icon: v}})} /></div>
+                    <div className="md:col-span-2"><textarea value={editingItem.data.description} onChange={e=>setEditingItem({...editingItem, data: {...editingItem.data, description: e.target.value}})} className="w-full bg-black border border-zinc-800 p-8 text-white rounded-3xl h-32 text-sm focus:border-primary outline-none" placeholder="서비스 요약 설명" /></div>
+                  </>
+                )}
+
+                {/* Shop(Affiliate/Goods) 필드 */}
                 {(editingItem.type === 'affiliate' || editingItem.type === 'goods') && (
                   <>
-                    <TextInput label="상품/서비스 명칭" value={editingItem.data.name} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, name: v}})} />
+                    <TextInput label="명칭" value={editingItem.data.name} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, name: v}})} />
                     <TextInput label="가격" value={editingItem.data.price} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, price: v}})} />
-                    <div className="md:col-span-2 relative">
-                      <TextInput label="이미지 URL" value={editingItem.data.imageUrl} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, imageUrl: v}})} />
-                      <button 
-                        onClick={handleGenerateAiImage}
-                        disabled={isAiGenerating}
-                        className="absolute right-6 bottom-3 bg-primary text-white px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:brightness-110 disabled:opacity-50"
-                      >
-                        {isAiGenerating ? (
-                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        ) : (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        )}
-                        AI 이미지 생성
-                      </button>
-                    </div>
-                    <div className="md:col-span-2"><textarea value={editingItem.data.description} onChange={e=>setEditingItem({...editingItem, data: {...editingItem.data, description: e.target.value}})} className="w-full bg-black/50 border border-zinc-800 p-6 text-white rounded-2xl h-24 text-sm" placeholder="짧은 설명" /></div>
-                    <div className="md:col-span-2"><textarea value={editingItem.data.content || editingItem.data.description} onChange={e=>setEditingItem({...editingItem, data: {...editingItem.data, content: e.target.value}})} className="w-full bg-black/50 border border-zinc-800 p-6 text-white rounded-2xl h-48 text-sm leading-relaxed" placeholder="상세 정보" /></div>
+                    <div className="md:col-span-2"><TextInput label="상품 이미지 URL" value={editingItem.data.imageUrl} onChange={(v:string)=>setEditingItem({...editingItem, data: {...editingItem.data, imageUrl: v}})} /></div>
+                    <div className="md:col-span-2"><textarea value={editingItem.data.description} onChange={e=>setEditingItem({...editingItem, data: {...editingItem.data, description: e.target.value}})} className="w-full bg-black border border-zinc-800 p-8 text-white rounded-3xl h-48 focus:border-primary outline-none" placeholder="상세 정보" /></div>
                   </>
                 )}
               </div>
 
-              <div className="flex gap-4 pt-6">
-                <button onClick={() => handleSave(editingItem.type, editingItem.data)} className="flex-grow bg-primary py-6 rounded-3xl text-white font-black uppercase text-xs tracking-[0.3em] shadow-2xl">Confirm & Apply</button>
+              <div className="flex gap-4 pt-10">
+                <button onClick={() => handleSave(editingItem.type, editingItem.data)} className="flex-grow bg-[#004EA2] py-6 rounded-3xl text-white font-black uppercase text-xs tracking-[0.3em] shadow-2xl">Confirm & Apply Changes</button>
                 <button onClick={() => setEditingItem(null)} className="px-10 bg-zinc-900 text-zinc-500 py-6 rounded-3xl font-black uppercase text-xs tracking-widest">Cancel</button>
               </div>
             </div>

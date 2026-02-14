@@ -65,7 +65,7 @@ export interface AffiliateProduct {
   id: string;
   name: string;
   description: string;
-  content?: string; // 상세 설명 필드 추가
+  content?: string; 
   price: string;
   imageUrl: string;
   tag: string;
@@ -75,7 +75,7 @@ export interface AffiliateProduct {
 export interface GoodsItem {
   id: string;
   name: string;
-  description?: string; // 상세 설명 필드 추가
+  description?: string; 
   price: string;
   imageUrl: string;
   isNew?: boolean;
@@ -154,6 +154,7 @@ export interface SiteSettings {
   registrationDate: string;
   editor: string;
   companyName: string;
+  youthProtectionOfficer: string;
 }
 
 export interface Order {
